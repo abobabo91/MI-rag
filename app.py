@@ -16,8 +16,19 @@ LOCATION = "us-east1"
 RAG_CORPUS_ID = "6917529027641081856"
 RAG_RESOURCE_NAME = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{RAG_CORPUS_ID}"
 # Get redirect URI from secrets if available, otherwise default to localhost
-if "google_auth" in st.secrets and "redirect_uri" in st.secrets["google_auth"]:
-    REDIRECT_URI = st.secrets["google_auth"]["redirect_uri"]
+if "google_auth" in st.secrets:
+    auth_secrets = st.secrets["google_auth"]
+    if "redirect_uri" in auth_secrets:
+        REDIRECT_URI = auth_secrets["redirect_uri"]
+    elif "redirect_uris" in auth_secrets:
+        # Handle if it's a list (from JSON) or string (custom set)
+        uris = auth_secrets["redirect_uris"]
+        if isinstance(uris, list) and len(uris) > 0:
+            REDIRECT_URI = uris[0]
+        else:
+            REDIRECT_URI = uris
+    else:
+        REDIRECT_URI = "http://localhost:8501"
 else:
     REDIRECT_URI = "http://localhost:8501"
 SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
