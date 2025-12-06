@@ -71,21 +71,49 @@ You need a "Corpus" (a storage bucket for your RAG index) created in Vertex AI.
 We deploy to **Cloud Run** because it's serverless (scales to zero when not used to save money) and secure.
 *   **Manage Services:** [Cloud Run Console](https://console.cloud.google.com/run/overview)
 
-### Step 1: Build & Deploy
-Run this single command from the project root. It packages your code into a Docker container and launches it.
+### Option 1: Automatic Deployment (Recommended)
+This project is connected to **Cloud Build**. Whenever you push changes to the `master` branch on GitHub, a new deployment is automatically triggered!
 
+1.  Make your changes.
+2.  Commit and push:
+    ```bash
+    git add .
+    git commit -m "Your update message"
+    git push origin master
+    ```
+3.  Watch the build status in the [Cloud Build Console](https://console.cloud.google.com/cloud-build/builds).
+
+### Option 2: Manual Deployment (CLI)
+If you need to deploy manually from your terminal (e.g., for testing without pushing):
+
+Run this single command from the project root:
 ```bash
 gcloud builds submit . --tag gcr.io/isd-1-440812/vertex-rag-app && gcloud run deploy vertex-rag-app --image gcr.io/isd-1-440812/vertex-rag-app --region us-east1 --allow-unauthenticated
 ```
 
-### Step 2: Configure Secrets (One Time Setup)
+### Configuration (One Time Setup)
+Regardless of how you deploy, you need to configure your secrets once.
+
+#### Configure Secrets (Option A: CLI)
 We don't upload the `secrets.toml` file to the cloud for security. Instead, we use **Environment Variables**. Run this command to set them (replace with your actual values):
 
 ```bash
 gcloud run services update vertex-rag-app --region us-east1 --set-env-vars "GOOGLE_CLIENT_ID=your-client-id,GOOGLE_CLIENT_SECRET=your-client-secret,REDIRECT_URI=https://vertex-rag-app-928136222747.us-east1.run.app"
 ```
 
-### Step 3: Finalize Auth
+#### Configure Secrets (Option B: Cloud Console UI)
+If you prefer clicking through the website:
+1.  Go to your [Cloud Run Service](https://console.cloud.google.com/run/overview).
+2.  Click **Edit & Deploy New Revision**.
+3.  Go to the **Container** tab (usually selected by default).
+4.  Scroll down to **Variables & Secrets** > **Environment variables**.
+5.  Click **Add Variable** and add these three:
+    *   `GOOGLE_CLIENT_ID`: (From your secrets file)
+    *   `GOOGLE_CLIENT_SECRET`: (From your secrets file)
+    *   `REDIRECT_URI`: (Your Cloud Run URL, e.g., `https://...run.app`)
+6.  Click **Deploy**.
+
+### Finalize Auth
 1.  Copy your Service URL: **`https://vertex-rag-app-928136222747.us-east1.run.app`**
 2.  Go back to the **Google Cloud Console > Credentials**.
 3.  Add this URL to the **Authorized Redirect URIs** list for your Client ID.
