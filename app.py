@@ -11,7 +11,7 @@ from google.auth.transport.requests import Request
 # -------------------------------
 # Page Config
 # -------------------------------
-st.set_page_config(page_title="Vertex AI RAG Chat", page_icon="💬", layout="wide")
+st.set_page_config(page_title="MI RAG Chat", page_icon="💬", layout="wide")
 
 # -------------------------------
 # Configuration
@@ -151,7 +151,6 @@ def main_app():
         st.error(f"Failed to initialize Vertex AI: {init_status}")
         st.stop()
     
-    st.markdown(f"Chatting with Corpus: `{RAG_CORPUS_ID}` in `{LOCATION}` using **Gemini 2.5 Flash**")
     st.sidebar.success(f"Logged in")
     if st.sidebar.button("Logout"):
         del st.session_state.credentials
@@ -163,7 +162,38 @@ def main_app():
         st.session_state.chat_session = None
         st.rerun()
 
+    
+    # Model Selection
     st.sidebar.divider()
+    st.sidebar.header("🤖 Model Config")
+    model_options = {
+        "Gemini 2.5 Flash": "gemini-2.5-flash",
+        "Gemini 3 Pro (Preview)": "gemini-3-pro-preview",
+        "Gemini 2.5 Pro": "gemini-2.5-pro",
+        "Gemini 2.5 Flash-Lite": "gemini-2.5-flash-lite",
+        "Custom": "custom"
+    }
+    selected_model_label = st.sidebar.selectbox("Choose LLM", list(model_options.keys()))
+    
+    if selected_model_label == "Custom":
+        selected_model_id = st.sidebar.text_input("Enter Model ID", value="gemini-1.5-pro")
+    else:
+        selected_model_id = model_options[selected_model_label]
+
+    st.markdown(f"Chatting with Corpus: `{RAG_CORPUS_ID}` using **{selected_model_id}**")
+
+    # Reset chat if model changes
+    if "current_model_id" not in st.session_state:
+        st.session_state.current_model_id = selected_model_id
+    
+    if st.session_state.current_model_id != selected_model_id:
+        st.session_state.current_model_id = selected_model_id
+        st.session_state.chat_session = None
+        # st.session_state.messages = [] # Keep history if possible, or clear if models incompatible
+        st.rerun()
+
+    st.sidebar.divider()
+
 
     # -------------------------------
     # Document Management (Sidebar)
@@ -297,9 +327,9 @@ def main_app():
         return rag_tool
 
     @st.cache_resource
-    def get_model(_rag_tool): 
+    def get_model(_rag_tool, model_name): 
         return GenerativeModel(
-            "gemini-2.5-flash", 
+            model_name, 
             tools=[_rag_tool],
             system_instruction=[SYSTEM_INSTRUCTION]
         )
@@ -313,7 +343,9 @@ def main_app():
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
         # Initialize chat session
         rag_tool = get_rag_tool()
-        model = get_model(rag_tool)
+        # Use selected model or default
+        current_id = st.session_state.get("current_model_id", "gemini-2.5-flash")
+        model = get_model(rag_tool, current_id)
         st.session_state.chat_session = model.start_chat()
 
     # -------------------------------
