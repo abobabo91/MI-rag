@@ -41,7 +41,7 @@ if secrets_loaded:
         REDIRECT_URI = os.environ.get("REDIRECT_URI", "http://localhost:8501")
 else:
     REDIRECT_URI = os.environ.get("REDIRECT_URI", "http://localhost:8501")
-SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
+GOOGLE_AUTH_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 
 st.title("💬 Vertex AI RAG Chat")
 
@@ -86,7 +86,7 @@ def get_flow_from_secrets():
     
     flow = google_auth_oauthlib.flow.Flow.from_client_config(
         client_config,
-        scopes=SCOPES,
+        scopes=GOOGLE_AUTH_SCOPES,
         redirect_uri=REDIRECT_URI
     )
     return flow
@@ -166,19 +166,19 @@ def main_app():
     # Model Selection
     st.sidebar.divider()
     st.sidebar.header("🤖 Model Config")
-    model_options = {
+    available_models_map = {
         "Gemini 2.5 Flash": "gemini-2.5-flash",
         "Gemini 3 Pro (Preview)": "gemini-3-pro-preview",
         "Gemini 2.5 Pro": "gemini-2.5-pro",
         "Gemini 2.5 Flash-Lite": "gemini-2.5-flash-lite",
         "Custom": "custom"
     }
-    selected_model_label = st.sidebar.selectbox("Choose LLM", list(model_options.keys()))
+    selected_model_label = st.sidebar.selectbox("Choose LLM", list(available_models_map.keys()))
     
     if selected_model_label == "Custom":
         selected_model_id = st.sidebar.text_input("Enter Model ID", value="gemini-1.5-pro")
     else:
-        selected_model_id = model_options[selected_model_label]
+        selected_model_id = available_models_map[selected_model_label]
 
     st.markdown(f"Chatting with Corpus: `{RAG_CORPUS_ID}` using **{selected_model_id}**")
 
@@ -272,7 +272,7 @@ def main_app():
     # -------------------------------
     # RAG Tool Setup
     # -------------------------------
-    SYSTEM_INSTRUCTION = """
+    RAG_SYSTEM_INSTRUCTION = """
     You are an AI assistant with access to specialized corpus of documents.
     Your role is to provide accurate and concise answers to questions based
     on documents that are retrievable using the retrieval tool.
@@ -331,7 +331,7 @@ def main_app():
         return GenerativeModel(
             model_name, 
             tools=[_rag_tool],
-            system_instruction=[SYSTEM_INSTRUCTION]
+            system_instruction=[RAG_SYSTEM_INSTRUCTION]
         )
 
     # -------------------------------

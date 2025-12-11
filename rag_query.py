@@ -5,32 +5,32 @@ from vertexai.preview.generative_models import GenerativeModel, Tool
 # -------------------------------
 # Your RAG engine identifiers
 # -------------------------------
-project_id = "isd-1-440812"
-location = "us-east1"
-rag_corpus_id = "6917529027641081856"
-rag_resource_name = f"projects/{project_id}/locations/{location}/ragCorpora/{rag_corpus_id}"
+PROJECT_ID = "isd-1-440812"
+LOCATION = "us-east1"
+RAG_CORPUS_ID = "6917529027641081856"
+RAG_RESOURCE_NAME = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{RAG_CORPUS_ID}"
 
 # -------------------------------
 # Initialize Vertex AI
 # -------------------------------
-print(f"Initializing Vertex AI for project {project_id}...")
-vertexai.init(project=project_id, location=location)
+print(f"Initializing Vertex AI for project {PROJECT_ID}...")
+vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 # -------------------------------
 # Define your question
 # -------------------------------
-question = "What are the main topics covered in the documents?"
+user_query = "What are the main topics covered in the documents?"
 
 # -------------------------------
 # Create RAG Tool
 # -------------------------------
 print("Configuring RAG tool...")
-rag_tool = Tool.from_retrieval(
+retrieval_tool = Tool.from_retrieval(
     retrieval=rag.Retrieval(
         source=rag.VertexRagStore(
             rag_resources=[
                 rag.RagResource(
-                    rag_corpus=rag_resource_name
+                    rag_corpus=RAG_RESOURCE_NAME
                 )
             ],
             similarity_top_k=5,
@@ -47,13 +47,13 @@ model = GenerativeModel("gemini-2.5-flash")
 # -------------------------------
 # Generate Answer
 # -------------------------------
-print(f"\nQuestion: {question}")
+print(f"\nQuestion: {user_query}")
 print("Querying RAG engine and generating answer (this may take a moment)...")
 
 try:
     response = model.generate_content(
-        question,
-        tools=[rag_tool],
+        user_query,
+        tools=[retrieval_tool],
     )
 
     # -------------------------------
@@ -80,5 +80,5 @@ except Exception as e:
     print(f"\nError during generation: {e}")
     print("\nPlease ensure you have authenticated with:")
     print("  gcloud auth login")
-    print(f"  gcloud config set project {project_id}")
+    print(f"  gcloud config set project {PROJECT_ID}")
     print("  gcloud auth application-default login")
