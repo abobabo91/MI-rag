@@ -1,10 +1,7 @@
-when logging in it opens a new page and it stays on it
-
 add a todo list inside the page so everyone can add comments what they want to see
 
 move to the vertex engine stuff so we have sessions
 
-allow to create own rag engines and not everyone updating the same
 
 
 AFTER:
