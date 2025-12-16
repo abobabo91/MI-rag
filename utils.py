@@ -19,6 +19,7 @@ DEFAULT_RAG_CORPUS_ID = "6917529027641081856"
 GOOGLE_AUTH_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 TODO_FILE = "todo_lists.json"
 RAG_ENGINES_FILE = "rag_engines.json"
+TOKEN_FILE = "token.json"
 
 def get_redirect_uri():
     try:
@@ -76,6 +77,30 @@ def save_rag_engines(engines):
 # -------------------------------
 # Auth Functions
 # -------------------------------
+def load_credentials():
+    if os.path.exists(TOKEN_FILE):
+        try:
+            with open(TOKEN_FILE, "r") as f:
+                data = json.load(f)
+                return google.oauth2.credentials.Credentials.from_authorized_user_info(data)
+        except Exception as e:
+            st.error(f"Error loading credentials: {e}")
+            return None
+    return None
+
+def save_credentials(creds):
+    try:
+        with open(TOKEN_FILE, "w") as f:
+            f.write(creds.to_json())
+    except Exception as e:
+        st.error(f"Error saving credentials: {e}")
+
+def logout():
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
+    if "credentials" in st.session_state:
+        del st.session_state.credentials
+
 def get_flow_from_secrets():
     """Creates an OAuth Flow object from Streamlit secrets or Env Vars."""
     client_config = None
@@ -121,7 +146,12 @@ def get_flow_from_secrets():
 
 def perform_auth():
     """Handles the OAuth flow."""
-    # 1. Check if already authenticated in session
+    # 1. Check if already authenticated in session or token file
+    if "credentials" not in st.session_state:
+        loaded_creds = load_credentials()
+        if loaded_creds:
+            st.session_state.credentials = loaded_creds
+
     if "credentials" in st.session_state:
         creds = st.session_state.credentials
         if creds.valid:
@@ -129,6 +159,7 @@ def perform_auth():
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
+                save_credentials(creds)
                 return True
             except:
                 st.session_state.credentials = None
@@ -141,6 +172,7 @@ def perform_auth():
             flow.fetch_token(code=code)
             creds = flow.credentials
             st.session_state.credentials = creds
+            save_credentials(creds)
             # Clear query params to clean URL
             st.query_params.clear()
             st.rerun()

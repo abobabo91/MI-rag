@@ -20,7 +20,7 @@ if utils.perform_auth():
     
     st.sidebar.success(f"Logged in")
     if st.sidebar.button("Logout"):
-        del st.session_state.credentials
+        utils.logout()
         st.rerun()
 
     st.title("💬 Vertex AI RAG Chat")
