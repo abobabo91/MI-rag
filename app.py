@@ -3,6 +3,7 @@ import vertexai
 from vertexai.preview import rag
 from vertexai.preview.generative_models import GenerativeModel, Tool
 import os
+import json
 import tempfile
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
@@ -44,6 +45,43 @@ else:
 GOOGLE_AUTH_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 
 st.title("💬 Vertex AI RAG Chat")
+
+# -------------------------------
+# Todo List Functions
+# -------------------------------
+TODO_FILE = "todo_lists.json"
+
+def load_todos():
+    if not os.path.exists(TODO_FILE):
+        return {}
+    try:
+        with open(TODO_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_todos(todos):
+    with open(TODO_FILE, "w") as f:
+        json.dump(todos, f, indent=4)
+
+# -------------------------------
+# RAG Engine Functions
+# -------------------------------
+RAG_ENGINES_FILE = "rag_engines.json"
+
+def load_rag_engines():
+    if not os.path.exists(RAG_ENGINES_FILE):
+        # Return default if file missing
+        return [{"name": "Default Shared Engine", "corpus_id": "6917529027641081856", "owner": "system", "is_default": True}]
+    try:
+        with open(RAG_ENGINES_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_rag_engines(engines):
+    with open(RAG_ENGINES_FILE, "w") as f:
+        json.dump(engines, f, indent=4)
 
 # -------------------------------
 # Auth Functions
@@ -129,7 +167,7 @@ def login_page():
     
     flow = get_flow_from_secrets()
     auth_url, _ = flow.authorization_url(prompt='consent')
-    st.link_button("Login with Google", auth_url, type="primary")
+    st.markdown(f'<a href="{auth_url}" target="_self" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #ff4b4b; text-decoration: none; border-radius: 4px;">Login with Google</a>', unsafe_allow_html=True)
 
 # -------------------------------
 # Main App Logic
@@ -155,6 +193,78 @@ def main_app():
     if st.sidebar.button("Logout"):
         del st.session_state.credentials
         st.rerun()
+
+    # -------------------------------
+    # RAG Engine Selection
+    # -------------------------------
+    st.sidebar.divider()
+    st.sidebar.header("⚙️ RAG Engine Config")
+    
+    rag_engines = load_rag_engines()
+    engine_names = [e["name"] for e in rag_engines]
+    
+    # Default selection logic
+    if "selected_engine_index" not in st.session_state:
+        st.session_state.selected_engine_index = 0
+    
+    # Ensure index is valid
+    if st.session_state.selected_engine_index >= len(engine_names):
+         st.session_state.selected_engine_index = 0
+
+    selected_engine_name = st.sidebar.selectbox(
+        "Select RAG Engine", 
+        engine_names, 
+        index=st.session_state.selected_engine_index
+    )
+    
+    # Update selected engine
+    selected_engine = next((e for e in rag_engines if e["name"] == selected_engine_name), rag_engines[0])
+    
+    # Update session state index if changed via selectbox
+    st.session_state.selected_engine_index = engine_names.index(selected_engine_name)
+
+    # Store selection in session
+    if "current_rag_corpus_id" not in st.session_state or st.session_state.current_rag_corpus_id != selected_engine["corpus_id"]:
+        st.session_state.current_rag_corpus_id = selected_engine["corpus_id"]
+        # Clear chat and file list when engine changes
+        st.session_state.messages = []
+        st.session_state.chat_session = None
+        st.session_state.file_list = []
+        st.rerun()
+
+    current_corpus_id = st.session_state.current_rag_corpus_id
+    current_rag_resource_name = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{current_corpus_id}"
+
+    # Create New Engine
+    with st.sidebar.expander("Create New RAG Engine"):
+        new_engine_name = st.text_input("New Engine Name")
+        if st.button("Create Engine"):
+            if new_engine_name and new_engine_name not in engine_names:
+                try:
+                    with st.spinner("Creating new RAG Corpus..."):
+                        # Create Corpus
+                        corpus = rag.create_corpus(display_name=new_engine_name)
+                        # Extract ID from resource name
+                        # corpus.name is like "projects/.../locations/.../ragCorpora/123456"
+                        new_corpus_id = corpus.name.split("/")[-1]
+                        
+                        new_engine = {
+                            "name": new_engine_name,
+                            "corpus_id": new_corpus_id,
+                            "owner": "user", # Ideally actual user email/ID
+                            "is_default": False
+                        }
+                        rag_engines.append(new_engine)
+                        save_rag_engines(rag_engines)
+                        st.success(f"Created engine: {new_engine_name}")
+                        st.session_state.selected_engine_index = len(rag_engines) - 1
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to create corpus: {e}")
+            elif new_engine_name in engine_names:
+                st.error("Engine with this name already exists")
+
+    st.sidebar.info(f"Active Engine: **{selected_engine_name}**")
 
     # Chat Controls
     if st.sidebar.button("Clear Chat", type="primary"):
@@ -216,7 +326,7 @@ def main_app():
                     
                     # Upload to RAG Corpus
                     rag_file = rag.upload_file(
-                        corpus_name=RAG_RESOURCE_NAME,
+                        corpus_name=current_rag_resource_name,
                         path=tmp_path,
                         display_name=uploaded_file.name
                     )
@@ -240,7 +350,7 @@ def main_app():
 
     def refresh_file_list():
         try:
-            files = list(rag.list_files(corpus_name=RAG_RESOURCE_NAME))
+            files = list(rag.list_files(corpus_name=current_rag_resource_name))
             st.session_state.file_list = files
         except Exception as e:
             st.sidebar.error(f"Could not list files: {e}")
@@ -268,6 +378,48 @@ def main_app():
                         st.rerun()
                     except Exception as e:
                         st.error(f"Failed to delete: {e}")
+
+    # -------------------------------
+    # Todo / Wishlist
+    # -------------------------------
+    st.sidebar.divider()
+    st.sidebar.header("📝 Community Wishlist")
+    
+    todos = load_todos()
+    
+    # Create new list
+    with st.sidebar.expander("Create New List"):
+        new_list_name = st.text_input("List Name")
+        if st.button("Create List"):
+            if new_list_name and new_list_name not in todos:
+                todos[new_list_name] = []
+                save_todos(todos)
+                st.success(f"Created list: {new_list_name}")
+                st.rerun()
+            elif new_list_name in todos:
+                st.error("List already exists")
+
+    # Select and View/Edit List
+    if todos:
+        selected_list = st.sidebar.selectbox("Select List", list(todos.keys()))
+        
+        if selected_list:
+            st.sidebar.subheader(f"{selected_list}")
+            
+            # Add item
+            new_item = st.sidebar.text_input("Add Item/Comment", key=f"input_{selected_list}")
+            if st.sidebar.button("Add", key=f"btn_{selected_list}"):
+                if new_item:
+                    todos[selected_list].append(new_item)
+                    save_todos(todos)
+                    st.rerun()
+            
+            # Display items
+            if todos[selected_list]:
+                for item in todos[selected_list]:
+                    st.sidebar.text(f"• {item}")
+            else:
+                st.sidebar.info("No items yet.")
 
     # -------------------------------
     # RAG Tool Setup
@@ -310,13 +462,13 @@ def main_app():
     """
 
     @st.cache_resource
-    def get_rag_tool():
+    def get_rag_tool(resource_name):
         rag_tool = Tool.from_retrieval(
             retrieval=rag.Retrieval(
                 source=rag.VertexRagStore(
                     rag_resources=[
                         rag.RagResource(
-                            rag_corpus=RAG_RESOURCE_NAME
+                            rag_corpus=resource_name
                         )
                     ],
                     similarity_top_k=10,
@@ -342,7 +494,7 @@ def main_app():
 
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
         # Initialize chat session
-        rag_tool = get_rag_tool()
+        rag_tool = get_rag_tool(current_rag_resource_name)
         # Use selected model or default
         current_id = st.session_state.get("current_model_id", "gemini-2.5-flash")
         model = get_model(rag_tool, current_id)
