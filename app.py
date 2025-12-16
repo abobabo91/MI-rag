@@ -1,5 +1,5 @@
 import streamlit as st
-import utils
+import core as utils
 
 # -------------------------------
 # Page Config

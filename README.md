@@ -39,7 +39,7 @@ To log in securely, you need Google OAuth credentials.
 You need a "Corpus" (a storage bucket for your RAG index) created in Vertex AI.
 *   **Manage Corpora:** [Vertex AI RAG Console](https://console.cloud.google.com/vertex-ai/rag/corpus)
 *   The App currently uses a hardcoded ID: `6917529027641081856`.
-*   If you need to change this, edit `PROJECT_ID` and `RAG_CORPUS_ID` in `app.py`.
+*   If you need to change this, edit `PROJECT_ID` and `DEFAULT_RAG_CORPUS_ID` in `utils.py`.
 
 ---
 
@@ -61,7 +61,7 @@ You need a "Corpus" (a storage bucket for your RAG index) created in Vertex AI.
 
 3.  **Run the App:**
     ```bash
-    streamlit run app.py
+    streamlit run RAG_Chat.py
     ```
 
 ---

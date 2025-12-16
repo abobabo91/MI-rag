@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add parent directory to path to allow importing core
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import core.config as config
 import vertexai
 from vertexai.preview import rag
 from vertexai.preview.generative_models import GenerativeModel, Tool
@@ -5,9 +12,9 @@ from vertexai.preview.generative_models import GenerativeModel, Tool
 # -------------------------------
 # Your RAG engine identifiers
 # -------------------------------
-PROJECT_ID = "isd-1-440812"
-LOCATION = "us-east1"
-RAG_CORPUS_ID = "6917529027641081856"
+PROJECT_ID = config.PROJECT_ID
+LOCATION = config.LOCATION
+RAG_CORPUS_ID = config.DEFAULT_RAG_CORPUS_ID
 RAG_RESOURCE_NAME = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{RAG_CORPUS_ID}"
 
 # -------------------------------
