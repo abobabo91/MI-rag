@@ -6,3 +6,8 @@ requests
 google-adk>=1.10.0
 pydantic-settings
 python-dotenv
+
+# Fix dependency backtracking
+google-api-python-client>=2.150.0
+google-api-core>=2.15.0
+protobuf>=4.25.0
