@@ -1,9 +1,9 @@
 streamlit==1.31.0
-google-cloud-aiplatform>=1.38.0
+google-cloud-aiplatform==1.132.0
 google-auth==2.41.1
 google-auth-oauthlib==1.2.3
 requests
-google-adk>=1.10.0
+google-adk==1.21.0
 pydantic-settings
 python-dotenv
 
