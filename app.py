@@ -22,6 +22,9 @@ if utils.perform_auth():
     if st.sidebar.button("Logout"):
         utils.logout()
         st.rerun()
+        
+    st.sidebar.divider()
+    st.sidebar.caption("v2.0 (ADK)")
 
     st.title("💬 Vertex AI RAG Chat")
 
@@ -57,8 +60,10 @@ if utils.perform_auth():
         st.session_state.messages = []
 
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
+        # Load system instruction
+        instruction = utils.load_system_instruction()
         # Initialize ADK chat session
-        st.session_state.chat_session = utils.get_adk_session(current_model_id, current_rag_resource_name)
+        st.session_state.chat_session = utils.get_adk_session(current_model_id, current_rag_resource_name, instruction)
 
     # Display chat messages
     for message in st.session_state.messages:

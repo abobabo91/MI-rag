@@ -179,7 +179,7 @@ class ADKChatSession:
         except Exception as e:
             return ADKResponse(f"Error executing ADK Agent: {str(e)}")
 
-def create_adk_agent(model_name, corpus_name):
+def create_adk_agent(model_name, corpus_name, instruction=None):
     """Creates an ADK Agent instance configured with the given parameters."""
     
     # Define Tools
@@ -199,18 +199,21 @@ def create_adk_agent(model_name, corpus_name):
         )
         tools.append(rag_retrieval_tool)
 
+    # Use provided instruction or fallback to default
+    agent_instruction = instruction if instruction else RAG_SYSTEM_INSTRUCTION
+
     # Create Agent
     agent = Agent(
         model=model_name,
         name='rag_agent',
-        instruction=RAG_SYSTEM_INSTRUCTION,
+        instruction=agent_instruction,
         tools=tools,
     )
     
     return agent
 
 @st.cache_resource
-def get_adk_session(model_name, corpus_name):
+def get_adk_session(model_name, corpus_name, instruction=None):
     """Factory to create and cache the session/agent wrapper."""
-    agent = create_adk_agent(model_name, corpus_name)
+    agent = create_adk_agent(model_name, corpus_name, instruction)
     return ADKChatSession(agent)

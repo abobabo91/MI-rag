@@ -9,3 +9,4 @@ GOOGLE_AUTH_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 TODO_FILE = "todo_lists.json"
 RAG_ENGINES_FILE = "rag_engines.json"
 TOKEN_FILE = "token.json"
+SYSTEM_INSTRUCTION_FILE = "system_instruction.txt"
