@@ -57,10 +57,8 @@ if utils.perform_auth():
         st.session_state.messages = []
 
     if "chat_session" not in st.session_state or st.session_state.chat_session is None:
-        # Initialize chat session
-        rag_tool = utils.get_rag_tool(current_rag_resource_name)
-        model = utils.get_model(rag_tool, current_model_id)
-        st.session_state.chat_session = model.start_chat()
+        # Initialize ADK chat session
+        st.session_state.chat_session = utils.get_adk_session(current_model_id, current_rag_resource_name)
 
     # Display chat messages
     for message in st.session_state.messages:
@@ -85,22 +83,13 @@ if utils.perform_auth():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    # Send message to Vertex AI Chat Session
+                    # Send message to ADK Agent Session
                     response = st.session_state.chat_session.send_message(prompt)
                     
                     text_response = response.text
                     
-                    # Extract sources
-                    sources = []
-                    if response.candidates and response.candidates[0].grounding_metadata:
-                        metadata = response.candidates[0].grounding_metadata
-                        if hasattr(metadata, 'grounding_chunks'):
-                            for chunk in metadata.grounding_chunks:
-                                if hasattr(chunk, 'retrieved_context'):
-                                    sources.append({
-                                        "uri": chunk.retrieved_context.uri,
-                                        "text": chunk.retrieved_context.text
-                                    })
+                    # Extract sources (using ADK wrapper's pre-processed sources)
+                    sources = getattr(response, 'sources', [])
                     
                     st.markdown(text_response)
                     
