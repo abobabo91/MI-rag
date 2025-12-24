@@ -26,7 +26,7 @@ if utils.perform_auth():
     st.sidebar.divider()
     st.sidebar.caption("v2.0 (ADK)")
 
-    st.title("💬 Vertex AI RAG Chat")
+    st.title("💬 MI RAG Chat")
 
     # -------------------------------
     # Session Initialization
