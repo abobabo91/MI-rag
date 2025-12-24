@@ -38,4 +38,5 @@ client_secret_*.json
 google-credentials.json
 
 # Exceptions (Track these JSON files)
-!system_instructions.json
+!data/system_instructions.json
+!data/todo_lists.json

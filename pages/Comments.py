@@ -10,7 +10,7 @@ import core as utils
 # -------------------------------
 # Page Config
 # -------------------------------
-st.set_page_config(page_title="Comments & Wishlist", page_icon="💬", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Comments & Wishlist", page_icon="💬", layout="wide")
 
 # -------------------------------
 # Authentication & Init
@@ -19,6 +19,8 @@ if not utils.perform_auth():
     utils.login_page()
     st.stop()
 
+utils.show_sidebar_auth()
+
 st.title("💬 Community Wishlist & Comments")
 
 # -------------------------------
@@ -26,37 +28,72 @@ st.title("💬 Community Wishlist & Comments")
 # -------------------------------
 todos = utils.load_todos()
 
-# Create new list
-with st.expander("Create New List"):
-    new_list_name = st.text_input("List Name")
-    if st.button("Create List"):
-        if new_list_name and new_list_name not in todos:
-            todos[new_list_name] = []
-            utils.save_todos(todos)
-            st.success(f"Created list: {new_list_name}")
-            st.rerun()
-        elif new_list_name in todos:
-            st.error("List already exists")
-
-# Select and View/Edit List
+# Display Lists (Grid)
 if todos:
-    selected_list = st.selectbox("Select List", list(todos.keys()))
-    
-    if selected_list:
-        st.subheader(f"{selected_list}")
-        
-        # Add item
-        c_input, c_add = st.columns([0.8, 0.2])
-        new_item = c_input.text_input("Add Item/Comment", key=f"input_{selected_list}", label_visibility="collapsed", placeholder="Add item...")
-        if c_add.button("Add", key=f"btn_{selected_list}"):
-            if new_item:
-                todos[selected_list].append(new_item)
+    keys = list(todos.keys())
+    # Iterate in chunks of 3 for grid layout
+    for i in range(0, len(keys), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(keys):
+                list_name = keys[i+j]
+                with cols[j]:
+                    st.subheader(list_name)
+                    
+                    current_content = todos[list_name]
+                    display_content = current_content
+                    
+                    # Handle migration from list to string
+                    if isinstance(current_content, list):
+                        display_content = "\n".join(current_content)
+                    
+                    new_content = st.text_area(
+                        f"Content for {list_name}", 
+                        value=display_content, 
+                        key=f"txt_{list_name}", 
+                        height=300, # Increased height
+                        label_visibility="collapsed"
+                    )
+                    
+                    if new_content != display_content:
+                        todos[list_name] = new_content
+                        utils.save_todos(todos)
+
+st.markdown("---")
+
+# Management Section (Bottom)
+st.subheader("Manage Lists")
+
+c_create, c_delete = st.columns(2)
+
+with c_create:
+    st.write("**Create New List**")
+    cc1, cc2 = st.columns([0.7, 0.3])
+    new_list_name = cc1.text_input("New List Name", label_visibility="collapsed", placeholder="Enter list name")
+    if cc2.button("Create List"):
+        if new_list_name:
+            if new_list_name not in todos:
+                todos[new_list_name] = ""
                 utils.save_todos(todos)
+                st.success(f"Created: {new_list_name}")
                 st.rerun()
-        
-        # Display items
-        if todos[selected_list]:
-            for item in todos[selected_list]:
-                st.text(f"• {item}")
+            else:
+                st.error("List exists")
         else:
-            st.info("No items yet.")
+            st.warning("Enter a name")
+
+with c_delete:
+    st.write("**Delete List**")
+    if todos:
+        cd1, cd2 = st.columns([0.7, 0.3])
+        list_to_delete = cd1.selectbox("Select list to delete", options=["Select..."] + list(todos.keys()), label_visibility="collapsed")
+        if cd2.button("Delete List"):
+            if list_to_delete and list_to_delete != "Select...":
+                del todos[list_to_delete]
+                utils.save_todos(todos)
+                st.success(f"Deleted: {list_to_delete}")
+                st.rerun()
+            else:
+                st.warning("Select a list")
+    else:
+        st.info("No lists to delete")

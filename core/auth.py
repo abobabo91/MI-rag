@@ -139,3 +139,29 @@ def login_page():
     flow = get_flow_from_secrets()
     auth_url, _ = flow.authorization_url(prompt='consent')
     st.markdown(f'<a href="{auth_url}" target="_self" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #ff4b4b; text-decoration: none; border-radius: 4px;">Login with Google</a>', unsafe_allow_html=True)
+
+def show_sidebar_auth():
+    """Displays the authentication status and navigation in the sidebar."""
+    
+    # Hide default sidebar navigation
+    st.markdown("""
+        <style>
+            [data-testid="stSidebarNav"] {display: none !important;}
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.sidebar.title(" ")
+    st.sidebar.page_link("app.py", label="Home", icon="🏠")
+    st.sidebar.page_link("pages/Chat.py", label="Chat", icon="💬")
+    st.sidebar.page_link("pages/Comments.py", label="Comments", icon="📝")
+    st.sidebar.page_link("pages/Settings.py", label="Settings", icon="⚙️")
+    
+    st.sidebar.divider()
+
+    if "credentials" in st.session_state and st.session_state.credentials:
+         st.sidebar.success(f"Logged in")
+         if st.sidebar.button("Logout"):
+            logout()
+            st.rerun()
+         st.sidebar.divider()
+         st.sidebar.caption("v2.0 (ADK)")

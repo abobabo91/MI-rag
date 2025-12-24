@@ -30,25 +30,17 @@ def save_rag_engines(engines):
         json.dump(engines, f, indent=4)
 
 def load_system_instruction():
-    if not os.path.exists(config.SYSTEM_INSTRUCTION_FILE):
-        return None
-    try:
-        with open(config.SYSTEM_INSTRUCTION_FILE, "r", encoding="utf-8") as f:
-            return f.read()
-    except:
-        return None
+    library = load_instructions_library()
+    return library.get("default")
 
 def save_system_instruction(instruction):
-    with open(config.SYSTEM_INSTRUCTION_FILE, "w", encoding="utf-8") as f:
-        f.write(instruction)
+    library = load_instructions_library()
+    library["default"] = instruction
+    save_instructions_library(library)
 
 def load_instructions_library():
     if not os.path.exists(config.SYSTEM_INSTRUCTIONS_DB):
-        # Initialize with current instruction as default
-        current = load_system_instruction()
-        if current is None:
-            current = "You are a helpful assistant."
-        initial_db = {"default": current}
+        initial_db = {"default": "You are a helpful assistant."}
         save_instructions_library(initial_db)
         return initial_db
     try:

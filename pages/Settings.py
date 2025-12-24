@@ -13,7 +13,7 @@ import core as utils
 # -------------------------------
 # Page Config
 # -------------------------------
-st.set_page_config(page_title="Settings", page_icon="⚙️", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Settings", page_icon="⚙️", layout="wide")
 
 # -------------------------------
 # Authentication & Init
@@ -21,6 +21,8 @@ st.set_page_config(page_title="Settings", page_icon="⚙️", layout="wide", ini
 if not utils.perform_auth():
     utils.login_page()
     st.stop()
+
+utils.show_sidebar_auth()
 
 # Initialize Vertex AI
 if "credentials" in st.session_state:
@@ -171,129 +173,9 @@ with col_left:
     st.divider()
 
     # -------------------------------
-    # Model Selection
+    # RAG Documents (Moved from Right)
     # -------------------------------
-    st.header("Model Configuration")
-    available_models_map = {
-        "Gemini 2.5 Flash": "gemini-2.5-flash",
-        "Gemini 3 Pro (Preview)": "gemini-3-pro-preview",
-        "Gemini 2.5 Pro": "gemini-2.5-pro",
-        "Gemini 2.5 Flash-Lite": "gemini-2.5-flash-lite",
-        "Custom": "custom"
-    }
-    
-    # Determine index for default
-    current_model = st.session_state.get("current_model_id", "gemini-2.5-flash")
-    # Reverse lookup for UI
-    reverse_map = {v: k for k, v in available_models_map.items()}
-    default_label = reverse_map.get(current_model, "Custom")
-    
-    selected_model_label = st.selectbox("Choose LLM", list(available_models_map.keys()), index=list(available_models_map.keys()).index(default_label) if default_label in available_models_map else 0)
-    
-    if selected_model_label == "Custom":
-        selected_model_id = st.text_input("Enter Model ID", value=current_model if current_model not in available_models_map.values() else "gemini-1.5-pro")
-    else:
-        selected_model_id = available_models_map[selected_model_label]
-
-    if "current_model_id" not in st.session_state:
-        st.session_state.current_model_id = selected_model_id
-    
-    if st.session_state.current_model_id != selected_model_id:
-        st.session_state.current_model_id = selected_model_id
-        st.session_state.chat_session = None
-        st.toast(f"Model switched to {selected_model_id}")
-        st.rerun()
-    
-    st.info(f"Current Model: `{st.session_state.current_model_id}`")
-
-    st.divider()
-
-    # -------------------------------
-    # System Instructions
-    # -------------------------------
-    st.header("System Instructions")
-    
-    # Load library
-    library = utils.load_instructions_library()
-    
-    # Initial load of active instruction
-    if "instruction_text" not in st.session_state:
-        current = utils.load_system_instruction()
-        if current is None:
-            # Fallback
-            try:
-                current = utils.RAG_SYSTEM_INSTRUCTION
-            except:
-                current = "You are a helpful assistant."
-        st.session_state.instruction_text = current
-
-    # Manage Presets
-    with st.expander("Manage Saved Instructions", expanded=False):
-        c1, c2, c3 = st.columns([0.5, 0.25, 0.25])
-        
-        preset_options = list(library.keys())
-        selected_preset_name = c1.selectbox("Select Preset", preset_options, key="preset_selector")
-        
-        if c2.button("Load Preset"):
-            if selected_preset_name in library:
-                st.session_state.instruction_text = library[selected_preset_name]
-                st.rerun()
-            
-        if c3.button("Delete Preset"):
-            if selected_preset_name == "default":
-                st.error("Cannot delete default preset.")
-            elif selected_preset_name in library:
-                del library[selected_preset_name]
-                utils.save_instructions_library(library)
-                st.success(f"Deleted {selected_preset_name}")
-                st.rerun()
-
-    # Text Area (bound to session state)
-    st.text_area(
-        "Active System Instruction", 
-        key="instruction_text",
-        height=300,
-        help="This prompt defines how the agent behaves and how it cites sources."
-    )
-    
-    col_save, col_save_as, col_reset = st.columns([1, 1, 1])
-    
-    if col_save.button("Save & Activate"):
-        utils.save_system_instruction(st.session_state.instruction_text)
-        st.success("Instructions saved and active! Chat session will restart.")
-        st.session_state.chat_session = None 
-        st.rerun()
-    
-    with col_save_as:
-        with st.expander("Save as Preset"):
-            new_preset_name = st.text_input("New Preset Name")
-            if st.button("Save to Library"):
-                if new_preset_name:
-                    library[new_preset_name] = st.session_state.instruction_text
-                    utils.save_instructions_library(library)
-                    st.success(f"Saved as {new_preset_name}")
-                    st.rerun()
-                else:
-                    st.error("Name required")
-    
-    if col_reset.button("Reset to Default"):
-        if "default" in library:
-             st.session_state.instruction_text = library["default"]
-             st.success("Loaded default preset. Click 'Save & Activate' to apply.")
-             st.rerun()
-        else:
-             try:
-                 st.session_state.instruction_text = utils.RAG_SYSTEM_INSTRUCTION
-                 st.success("Loaded system default.")
-                 st.rerun()
-             except:
-                 st.error("Default not found")
-
-with col_right:
-    # -------------------------------
-    # Document Management
-    # -------------------------------
-    st.header("Manage Documents")
+    st.header("RAG Documents")
 
     # Upload Document
     uploaded_file = st.file_uploader("Upload a new document", type=["txt", "pdf", "docx", "html"])
@@ -363,3 +245,128 @@ with col_right:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Failed to delete: {e}")
+
+with col_right:
+    # -------------------------------
+    # Model Selection (Moved from Left)
+    # -------------------------------
+    st.header("Model Configuration")
+    available_models_map = {
+        "Gemini 2.5 Flash": "gemini-2.5-flash",
+        "Gemini 3 Pro (Preview)": "gemini-3-pro-preview",
+        "Gemini 2.5 Pro": "gemini-2.5-pro",
+        "Gemini 2.5 Flash-Lite": "gemini-2.5-flash-lite",
+        "Custom": "custom"
+    }
+    
+    # Determine index for default
+    current_model = st.session_state.get("current_model_id", "gemini-2.5-flash")
+    # Reverse lookup for UI
+    reverse_map = {v: k for k, v in available_models_map.items()}
+    default_label = reverse_map.get(current_model, "Custom")
+    
+    selected_model_label = st.selectbox("Choose LLM", list(available_models_map.keys()), index=list(available_models_map.keys()).index(default_label) if default_label in available_models_map else 0)
+    
+    if selected_model_label == "Custom":
+        selected_model_id = st.text_input("Enter Model ID", value=current_model if current_model not in available_models_map.values() else "gemini-1.5-pro")
+    else:
+        selected_model_id = available_models_map[selected_model_label]
+
+    if "current_model_id" not in st.session_state:
+        st.session_state.current_model_id = selected_model_id
+    
+    if st.session_state.current_model_id != selected_model_id:
+        st.session_state.current_model_id = selected_model_id
+        st.session_state.chat_session = None
+        st.toast(f"Model switched to {selected_model_id}")
+        st.rerun()
+    
+    st.info(f"Current Model: `{st.session_state.current_model_id}`")
+
+    st.divider()
+
+    # -------------------------------
+    # System Instructions (Moved from Left)
+    # -------------------------------
+    st.header("System Instructions")
+    
+    # Load library
+    library = utils.load_instructions_library()
+    instruction_names = list(library.keys())
+    
+    # Load active instruction text from file
+    current_active_text = utils.load_system_instruction() or ""
+
+    # Determine which instruction is currently active by matching text
+    # Default to first one if no match found
+    current_selection_index = 0
+    match_found = False
+    for idx, name in enumerate(instruction_names):
+        if library[name].strip() == current_active_text.strip():
+            current_selection_index = idx
+            match_found = True
+            break
+            
+    # Selectbox for choosing instruction
+    selected_instruction_name = st.selectbox(
+        "Select Instruction",
+        instruction_names,
+        index=current_selection_index
+    )
+    
+    # If selection changed (or we are enforcing the selection because no match was found)
+    # We update the active text to match the selection
+    if library[selected_instruction_name].strip() != current_active_text.strip():
+        utils.save_system_instruction(library[selected_instruction_name])
+        st.session_state.chat_session = None # Reset chat
+        st.toast(f"Activated instruction: {selected_instruction_name}")
+        st.rerun()
+
+    # Display / Edit Content
+    st.caption("Edit the text below and click 'Update' to save changes to this instruction.")
+    instruction_content = st.text_area(
+        "Instruction Content", 
+        value=library[selected_instruction_name],
+        height=300
+    )
+    
+    col_update, col_delete = st.columns([1, 1])
+    
+    with col_update:
+        if st.button("Update This Instruction"):
+            library[selected_instruction_name] = instruction_content
+            utils.save_instructions_library(library)
+            utils.save_system_instruction(instruction_content)
+            st.success("Updated and activated!")
+            st.rerun()
+            
+    with col_delete:
+        if selected_instruction_name != "default":
+            if st.button("Delete This Instruction", type="primary"):
+                del library[selected_instruction_name]
+                utils.save_instructions_library(library)
+                # Switch to default if available, else first one
+                fallback = "default" if "default" in library else list(library.keys())[0]
+                utils.save_system_instruction(library[fallback])
+                st.success(f"Deleted {selected_instruction_name}")
+                st.rerun()
+        else:
+            st.button("Delete This Instruction", disabled=True, help="Cannot delete default instruction")
+
+    # Create New
+    with st.expander("Create New Instruction"):
+        new_inst_name = st.text_input("Name")
+        new_inst_content = st.text_area("Content", height=200)
+        if st.button("Create Instruction"):
+            if new_inst_name and new_inst_content:
+                if new_inst_name in library:
+                    st.error("Name already exists")
+                else:
+                    library[new_inst_name] = new_inst_content
+                    utils.save_instructions_library(library)
+                    # Activate the new one
+                    utils.save_system_instruction(new_inst_content)
+                    st.success(f"Created and activated {new_inst_name}")
+                    st.rerun()
+            else:
+                st.error("Name and content required")
