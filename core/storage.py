@@ -41,3 +41,22 @@ def load_system_instruction():
 def save_system_instruction(instruction):
     with open(config.SYSTEM_INSTRUCTION_FILE, "w", encoding="utf-8") as f:
         f.write(instruction)
+
+def load_instructions_library():
+    if not os.path.exists(config.SYSTEM_INSTRUCTIONS_DB):
+        # Initialize with current instruction as default
+        current = load_system_instruction()
+        if current is None:
+            current = "You are a helpful assistant."
+        initial_db = {"default": current}
+        save_instructions_library(initial_db)
+        return initial_db
+    try:
+        with open(config.SYSTEM_INSTRUCTIONS_DB, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_instructions_library(library):
+    with open(config.SYSTEM_INSTRUCTIONS_DB, "w", encoding="utf-8") as f:
+        json.dump(library, f, indent=4)

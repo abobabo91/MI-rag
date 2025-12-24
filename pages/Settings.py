@@ -213,37 +213,81 @@ with col_left:
     # -------------------------------
     st.header("System Instructions")
     
-    # Load current instruction (or fallback to default)
-    current_instruction = utils.load_system_instruction()
-    if current_instruction is None:
-        try:
-            current_instruction = utils.RAG_SYSTEM_INSTRUCTION
-        except:
-            current_instruction = "You are a helpful assistant."
+    # Load library
+    library = utils.load_instructions_library()
+    
+    # Initial load of active instruction
+    if "instruction_text" not in st.session_state:
+        current = utils.load_system_instruction()
+        if current is None:
+            # Fallback
+            try:
+                current = utils.RAG_SYSTEM_INSTRUCTION
+            except:
+                current = "You are a helpful assistant."
+        st.session_state.instruction_text = current
 
-    new_instruction = st.text_area(
-        "Agent System Prompt", 
-        value=current_instruction, 
+    # Manage Presets
+    with st.expander("Manage Saved Instructions", expanded=False):
+        c1, c2, c3 = st.columns([0.5, 0.25, 0.25])
+        
+        preset_options = list(library.keys())
+        selected_preset_name = c1.selectbox("Select Preset", preset_options, key="preset_selector")
+        
+        if c2.button("Load Preset"):
+            if selected_preset_name in library:
+                st.session_state.instruction_text = library[selected_preset_name]
+                st.rerun()
+            
+        if c3.button("Delete Preset"):
+            if selected_preset_name == "default":
+                st.error("Cannot delete default preset.")
+            elif selected_preset_name in library:
+                del library[selected_preset_name]
+                utils.save_instructions_library(library)
+                st.success(f"Deleted {selected_preset_name}")
+                st.rerun()
+
+    # Text Area (bound to session state)
+    st.text_area(
+        "Active System Instruction", 
+        key="instruction_text",
         height=300,
         help="This prompt defines how the agent behaves and how it cites sources."
     )
     
-    col_save, col_reset = st.columns([1, 1])
+    col_save, col_save_as, col_reset = st.columns([1, 1, 1])
     
-    if col_save.button("Save Instructions"):
-        utils.save_system_instruction(new_instruction)
-        st.success("Instructions saved! Chat session will restart.")
+    if col_save.button("Save & Activate"):
+        utils.save_system_instruction(st.session_state.instruction_text)
+        st.success("Instructions saved and active! Chat session will restart.")
         st.session_state.chat_session = None 
         st.rerun()
     
+    with col_save_as:
+        with st.expander("Save as Preset"):
+            new_preset_name = st.text_input("New Preset Name")
+            if st.button("Save to Library"):
+                if new_preset_name:
+                    library[new_preset_name] = st.session_state.instruction_text
+                    utils.save_instructions_library(library)
+                    st.success(f"Saved as {new_preset_name}")
+                    st.rerun()
+                else:
+                    st.error("Name required")
+    
     if col_reset.button("Reset to Default"):
-        try:
-            utils.save_system_instruction(utils.RAG_SYSTEM_INSTRUCTION)
-            st.success("Reset to default instructions.")
-            st.session_state.chat_session = None
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error resetting: {e}")
+        if "default" in library:
+             st.session_state.instruction_text = library["default"]
+             st.success("Loaded default preset. Click 'Save & Activate' to apply.")
+             st.rerun()
+        else:
+             try:
+                 st.session_state.instruction_text = utils.RAG_SYSTEM_INSTRUCTION
+                 st.success("Loaded system default.")
+                 st.rerun()
+             except:
+                 st.error("Default not found")
 
 with col_right:
     # -------------------------------
